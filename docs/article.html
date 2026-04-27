@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka + AWS Lambda ESM — The Complete Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0B0D12;
+    --surface: #12151E;
+    --surface2: #1A1E2A;
+    --border: rgba(255,255,255,0.07);
+    --border-accent: rgba(255,255,255,0.12);
+    --text: #E8EAF0;
+    --muted: #7B8196;
+    --faint: #444760;
+    --orange: #FF5C2E;
+    --orange-dim: rgba(255,92,46,0.12);
+    --orange-glow: rgba(255,92,46,0.08);
+    --teal: #00C9A7;
+    --teal-dim: rgba(0,201,167,0.1);
+    --blue: #4A8FE7;
+    --blue-dim: rgba(74,143,231,0.1);
+    --amber: #F0A32B;
+    --amber-dim: rgba(240,163,43,0.1);
+    --red: #F05252;
+    --red-dim: rgba(240,82,82,0.1);
+    --green: #22C55E;
+    --green-dim: rgba(34,197,94,0.1);
+    --purple: #A78BFA;
+    --purple-dim: rgba(167,139,250,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 17px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 780px; margin: 0 auto; padding: 64px 32px 120px; }
+
+  /* ── Hero ── */
+  .hero { margin-bottom: 72px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--orange); background: var(--orange-dim);
+    border: 1px solid rgba(255,92,46,0.2);
+    padding: 4px 12px; border-radius: 4px; margin-bottom: 28px;
+  }
+  .tag::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 800; line-height: 1.08; letter-spacing: -0.03em;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #E8EAF0 0%, #9BA3C0 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .subtitle {
+    font-size: 18px; color: var(--muted); font-weight: 300;
+    max-width: 580px; line-height: 1.65; margin-bottom: 36px;
+  }
+  .meta {
+    display: flex; align-items: center; gap: 20px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--faint);
+  }
+  .meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* ── Section headings ── */
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--text); margin-bottom: 18px; margin-top: 60px;
+  }
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--text); margin-bottom: 12px; margin-top: 32px;
+  }
+  p { color: #B8BCCC; margin-bottom: 18px; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 52px 0; }
+
+  /* ── Callout box ── */
+  .callout {
+    display: flex; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--orange);
+    border-radius: 10px; padding: 20px 24px; margin: 32px 0;
+  }
+  .callout-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .callout p { margin: 0; font-size: 15px; line-height: 1.65; }
+  .callout strong { color: var(--text); font-weight: 500; }
+
+  /* ── Architecture flow ── */
+  .flow {
+    display: flex; align-items: center; gap: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px 28px;
+    margin: 28px 0; overflow-x: auto;
+  }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center;
+    flex-shrink: 0; min-width: 100px;
+  }
+  .flow-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 8px;
+  }
+  .flow-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.4; }
+  .flow-arrow { color: var(--faint); font-size: 18px; margin: 0 4px; flex-shrink: 0; margin-bottom: 24px; }
+
+  /* ── Comparison cards ── */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0; }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px;
+  }
+  .compare-card.featured { border-color: rgba(0,201,167,0.3); background: rgba(0,201,167,0.04); }
+  .compare-card h3 { font-size: 15px; margin-bottom: 14px; margin-top: 0; color: var(--text); }
+  .compare-card .badge {
+    display: inline-block; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle;
+  }
+  .badge-teal { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,201,167,0.2); }
+  .badge-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,163,43,0.2); }
+  .compare-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .compare-row:last-child { border-bottom: none; }
+  .compare-row .key { font-size: 13px; color: var(--muted); }
+  .compare-row .val { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); }
+  .check { color: var(--green); }
+  .cross { color: var(--red); }
+
+  /* ── Code block ── */
+  .code-wrap {
+    position: relative; background: #0D1117;
+    border: 1px solid var(--border); border-radius: 12px;
+    margin: 28px 0; overflow: hidden;
+  }
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  .code-filename { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); }
+  .code-lang {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--orange); background: var(--orange-dim);
+    border: 1px solid rgba(255,92,46,0.15); padding: 2px 8px; border-radius: 3px;
+  }
+  pre {
+    padding: 24px; overflow-x: auto; font-family: 'IBM Plex Mono', monospace;
+    font-size: 13.5px; line-height: 1.7; tab-size: 2;
+  }
+  code { font-family: 'IBM Plex Mono', monospace; }
+
+  /* Syntax colors */
+  .kw  { color: #C792EA; }
+  .str { color: #C3E88D; }
+  .cm  { color: #546E7A; font-style: italic; }
+  .fn  { color: #82AAFF; }
+  .var { color: #F07178; }
+  .num { color: #F78C6C; }
+  .key { color: #FFCB6B; }
+  .op  { color: #89DDFF; }
+  .cls { color: #00C9A7; }
+
+  /* ── Event anatomy ── */
+  .json-wrap {
+    background: #0D1117; border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin: 28px 0;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.8;
+    overflow-x: auto;
+  }
+  .annotation {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; margin: 8px 0;
+    font-size: 13px;
+  }
+  .annotation-icon { font-size: 14px; flex-shrink: 0; }
+  .annotation p { margin: 0; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; }
+  .annotation strong { color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+
+  /* ── Best practices ── */
+  .practices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 28px 0; }
+  .practice-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px;
+  }
+  .practice-num {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--orange); margin-bottom: 8px; display: block;
+  }
+  .practice-card h4 { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .practice-card p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.55; }
+
+  /* ── Use cases ── */
+  .usecases { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 28px 0; }
+  .usecase {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px;
+  }
+  .usecase-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 7px; }
+  .usecase h4 { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .usecase p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  /* ── CLI command ── */
+  .cli {
+    background: #0D1117; border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 22px; margin: 20px 0;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    line-height: 1.8; overflow-x: auto;
+  }
+  .cli-prompt { color: var(--teal); user-select: none; }
+  .cli-flag { color: #89DDFF; }
+  .cli-val { color: #C3E88D; }
+
+  /* ── Inline code ── */
+  p code, li code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    background: rgba(255,255,255,0.06); color: #C3E88D;
+    padding: 1px 6px; border-radius: 4px;
+  }
+
+  /* ── CTA footer ── */
+  .cta {
+    margin-top: 72px; padding: 40px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; text-align: center;
+  }
+  .cta h2 { margin-top: 0; font-size: 28px; }
+  .cta p { max-width: 480px; margin: 0 auto 24px; color: var(--muted); }
+  .btn-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: opacity 0.15s; text-decoration: none;
+  }
+  .btn-primary { background: var(--orange); color: #fff; border: none; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border-accent); }
+  .btn:hover { opacity: 0.85; }
+
+  /* ── TOC pill ── */
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin: 32px 0 52px;
+  }
+  .toc a {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--muted); text-decoration: none;
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 10px; transition: all 0.15s;
+  }
+  .toc a:hover { color: var(--text); border-color: var(--border-accent); }
+
+  /* ── Offset lag meter (decorative) ── */
+  .lag-meter {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; margin: 20px 0;
+  }
+  .lag-bar-wrap { background: rgba(255,255,255,0.05); border-radius: 4px; height: 8px; margin: 12px 0 6px; overflow: hidden; }
+  .lag-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--green), var(--amber), var(--red)); }
+  .lag-labels { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); }
+
+  @media(max-width: 600px) {
+    .compare-grid, .practices, .usecases { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .flow-arrow { transform: rotate(90deg); margin: 4px 0 4px 20px; }
+  }
+</style>
+</head>
+<body>
+<article class="page">
+
+  <!-- ── HERO ── -->
+  <header class="hero">
+    <div class="tag">Deep dive · 10 min read</div>
+    <h1>Serverless Kafka Consumers with AWS Lambda ESM</h1>
+    <p class="subtitle">
+      Stop managing consumer threads. AWS Event Source Mapping turns any Kafka topic into a Lambda trigger — with auto-scaling, offset management, and built-in retries, all handled by AWS.
+    </p>
+    <div class="meta">
+      <span>⚡ Production-ready code included</span>
+      <span>·</span>
+      <span>🏗️ Terraform IaC included</span>
+      <span>·</span>
+      <span>📊 CloudWatch EMF metrics</span>
+    </div>
+  </header>
+
+  <!-- ── TOC ── -->
+  <nav class="toc" aria-label="Contents">
+    <a href="#the-problem">The problem</a>
+    <a href="#how-esm-works">How ESM works</a>
+    <a href="#on-demand-vs-provisioned">On-demand vs provisioned</a>
+    <a href="#event-anatomy">Event anatomy</a>
+    <a href="#handler-code">Handler code</a>
+    <a href="#configuring-esm">Configuring ESM</a>
+    <a href="#best-practices">Best practices</a>
+    <a href="#use-cases">Use cases</a>
+  </nav>
+
+  <!-- ── SECTION 1: THE PROBLEM ── -->
+  <section id="the-problem">
+    <h2>The problem with traditional Kafka consumers</h2>
+    <p>
+      Running Kafka consumers in production means dealing with a long tail of operational concerns that have nothing to do with your actual business logic.
+    </p>
+
+    <div class="practices" style="margin-bottom:0;">
+      <div class="practice-card">
+        <span class="practice-num">PAIN POINT 01</span>
+        <h4>Consumer group management</h4>
+        <p>Rebalances, lag monitoring, offset commits — all require custom tooling and constant vigilance.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">PAIN POINT 02</span>
+        <h4>Scaling on spikes</h4>
+        <p>Traffic spikes mean more consumers. More consumers mean coordination overhead and potential rebalance storms.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">PAIN POINT 03</span>
+        <h4>Infrastructure to maintain</h4>
+        <p>EC2 instances, containers, health checks, deploy pipelines — just to run a <code>poll()</code> loop.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">PAIN POINT 04</span>
+        <h4>Retry logic</h4>
+        <p>Dead letter queues, poison pill handling, backoff strategies — reimplemented for every service.</p>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:28px;">
+      <div class="callout-icon">💡</div>
+      <p><strong>The insight:</strong> Most Kafka consumers are stateless — they receive a batch, process it, and repeat. That's a perfect fit for Lambda's execution model. AWS ESM lets you replace the entire consumer infrastructure with a managed poller that invokes your function.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 2: HOW ESM WORKS ── -->
+  <section id="how-esm-works">
+    <h2>How Kafka Event Source Mapping works</h2>
+    <p>
+      ESM is an AWS-managed Kafka consumer that runs inside Lambda's infrastructure. You don't provision it, scale it, or operate it. You configure it — and it continuously polls your Kafka topic, batches messages, and invokes your Lambda function.
+    </p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(255,92,46,0.12);">🟠</div>
+        <div class="flow-label">Kafka<br/>topic</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(74,143,231,0.12);">🔵</div>
+        <div class="flow-label">ESM<br/>pollers</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(0,201,167,0.12);">🟢</div>
+        <div class="flow-label">Batch<br/>assembly</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(167,139,250,0.12);">🟣</div>
+        <div class="flow-label">Lambda<br/>invocation</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-icon" style="background:rgba(240,163,43,0.12);">🟡</div>
+        <div class="flow-label">Your<br/>logic</div>
+      </div>
+    </div>
+
+    <p>ESM maps <strong>one Lambda invocation per partition per batch</strong>. If your topic has 10 partitions and a batch is ready on 6 of them, Lambda fires 6 concurrent invocations. Parallelism is naturally bounded by your partition count — a clean, predictable scaling model.</p>
+
+    <h3>What AWS manages for you</h3>
+    <div class="practices">
+      <div class="practice-card">
+        <span class="practice-num">MANAGED</span>
+        <h4>Consumer group lifecycle</h4>
+        <p>ESM creates and manages a dedicated consumer group. Partition assignment and rebalancing are transparent.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">MANAGED</span>
+        <h4>Offset checkpointing</h4>
+        <p>Offsets advance only after your function returns successfully. Errors cause a re-delivery of the same batch.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">MANAGED</span>
+        <h4>Retry with backoff</h4>
+        <p>Failed batches are retried with exponential backoff. You configure max attempts and the on-failure destination.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">MANAGED</span>
+        <h4>Batching window</h4>
+        <p>Configurable <code>MaximumBatchingWindowInSeconds</code> (0–300s) lets you trade latency for throughput.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 3: ON-DEMAND VS PROVISIONED ── -->
+  <section id="on-demand-vs-provisioned">
+    <h2>On-demand vs provisioned mode</h2>
+    <p>
+      ESM has two operational modes that affect latency under load. The difference matters most at the edges — cold starts and sustained high-throughput.
+    </p>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <h3>On-demand <span class="badge badge-amber">Default</span></h3>
+        <div class="compare-row"><span class="key">Poller scaling</span><span class="val">Automatic</span></div>
+        <div class="compare-row"><span class="key">Cold start latency</span><span class="val">Present</span></div>
+        <div class="compare-row"><span class="key">Cost model</span><span class="val">Pay per use</span></div>
+        <div class="compare-row"><span class="key">Suitable for</span><span class="val">Bursty workloads</span></div>
+        <div class="compare-row"><span class="key">Config complexity</span><span class="val">Low</span></div>
+      </div>
+      <div class="compare-card featured">
+        <h3>Provisioned <span class="badge badge-teal">Recommended for prod</span></h3>
+        <div class="compare-row"><span class="key">Poller scaling</span><span class="val">Pre-warmed</span></div>
+        <div class="compare-row"><span class="key">Cold start latency</span><span class="val"><span class="check">Eliminated</span></span></div>
+        <div class="compare-row"><span class="key">Cost model</span><span class="val">Reserved capacity</span></div>
+        <div class="compare-row"><span class="key">Suitable for</span><span class="val">Critical / high-throughput</span></div>
+        <div class="compare-row"><span class="key">Config complexity</span><span class="val">Medium</span></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-icon">⚠️</div>
+      <p><strong>Rule of thumb:</strong> Use on-demand for dev/staging and non-latency-sensitive workloads. Switch to provisioned for payment processing, fraud detection, or anywhere p99 latency matters. A 2–4 second cold start is invisible in a batch analytics pipeline but catastrophic in a real-time fraud check.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 4: EVENT ANATOMY ── -->
+  <section id="event-anatomy">
+    <h2>Anatomy of a Kafka ESM event</h2>
+    <p>
+      Lambda receives a single JSON payload per invocation, containing one or more topic-partition batches. Every message value is Base64-encoded — your first job is always to decode it.
+    </p>
+
+    <div class="json-wrap">
+<span class="op">{</span>
+  <span class="key">"eventSource"</span><span class="op">:</span> <span class="str">"aws:kafka"</span><span class="op">,</span>
+  <span class="key">"eventSourceArn"</span><span class="op">:</span> <span class="str">"arn:aws:kafka:us-east-1:123:cluster/prod/abc"</span><span class="op">,</span>
+  <span class="key">"records"</span><span class="op">: {</span>                             <span class="cm">// keyed by "topic-partition"</span>
+    <span class="key">"orders.created-0"</span><span class="op">: [</span>
+      <span class="op">{</span>
+        <span class="key">"topic"</span><span class="op">:</span>     <span class="str">"orders.created"</span><span class="op">,</span>
+        <span class="key">"partition"</span><span class="op">:</span> <span class="num">0</span><span class="op">,</span>
+        <span class="key">"offset"</span><span class="op">:</span>    <span class="num">1042</span><span class="op">,</span>
+        <span class="key">"timestamp"</span><span class="op">:</span> <span class="num">1705314720123</span><span class="op">,</span>       <span class="cm">// Unix ms</span>
+        <span class="key">"key"</span><span class="op">:</span>       <span class="str">"T1JELTIwMjQ="</span><span class="op">,</span>        <span class="cm">// ← Base64 encoded</span>
+        <span class="key">"value"</span><span class="op">:</span>     <span class="str">"eyJvcmRlcklkIjoi..."</span><span class="op">,</span>  <span class="cm">// ← Base64 encoded</span>
+        <span class="key">"headers"</span><span class="op">: [</span>
+          <span class="op">{</span> <span class="key">"content-type"</span><span class="op">:</span> <span class="op">[</span><span class="num">97</span><span class="op">,</span><span class="num">112</span><span class="op">,</span><span class="num">112</span><span class="op">...]</span> <span class="op">}</span>  <span class="cm">// byte array</span>
+        <span class="op">]</span>
+      <span class="op">}</span>
+    <span class="op">]</span>
+  <span class="op">}</span>
+<span class="op">}</span>
+    </div>
+
+    <div class="annotation">
+      <div class="annotation-icon">🔑</div>
+      <p><strong>Key + Value decoding:</strong> <code>Buffer.from(msg.key, 'base64').toString('utf-8')</code> — always do this before anything else. Never pass raw Base64 to your downstream logic.</p>
+    </div>
+    <div class="annotation">
+      <div class="annotation-icon">📋</div>
+      <p><strong>Headers decoding:</strong> Each header value is a byte array (<code>number[]</code>). Use <code>Buffer.from(bytes).toString('utf-8')</code>. Headers are great for routing metadata, trace IDs, and schema versions.</p>
+    </div>
+    <div class="annotation">
+      <div class="annotation-icon">⏱️</div>
+      <p><strong>Timestamp:</strong> This is the Kafka produce timestamp in Unix milliseconds. Wrap it in <code>new Date(msg.timestamp).toISOString()</code> for readable logs and audit trails.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 5: HANDLER CODE ── -->
+  <section id="handler-code">
+    <h2>Production handler walkthrough</h2>
+    <p>
+      The handler in the zip below follows a four-layer pattern: <strong>decode → enrich → route → observe</strong>. Here's the core loop with annotations:
+    </p>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-filename">src/handler.mjs</span>
+        <span class="code-lang">Node.js ESM</span>
+      </div>
+      <pre><span class="kw">export const</span> <span class="fn">handler</span> <span class="op">=</span> <span class="kw">async</span> (<span class="var">event</span>, <span class="var">context</span>) <span class="op">=></span> {
+  <span class="cm">// ① Iterate topic-partitions in the batch</span>
+  <span class="kw">for</span> (<span class="kw">const</span> [<span class="var">topicPartition</span>, <span class="var">messages</span>] <span class="kw">of</span>
+       <span class="cls">Object</span>.<span class="fn">entries</span>(<span class="var">event</span>.<span class="var">records</span>)) {
+
+    <span class="kw">for</span> (<span class="kw">const</span> <span class="var">message</span> <span class="kw">of</span> <span class="var">messages</span>) {
+      <span class="cm">// ② Decode Base64 key + value</span>
+      <span class="kw">const</span> <span class="var">key</span>   <span class="op">=</span> <span class="var">message</span>.<span class="var">key</span>
+        <span class="op">?</span> <span class="cls">Buffer</span>.<span class="fn">from</span>(<span class="var">message</span>.<span class="var">key</span>, <span class="str">'base64'</span>).<span class="fn">toString</span>(<span class="str">'utf-8'</span>)
+        <span class="op">:</span> <span class="kw">null</span>;
+      <span class="kw">const</span> <span class="var">value</span> <span class="op">=</span> <span class="var">message</span>.<span class="var">value</span>
+        <span class="op">?</span> <span class="cls">Buffer</span>.<span class="fn">from</span>(<span class="var">message</span>.<span class="var">value</span>, <span class="str">'base64'</span>).<span class="fn">toString</span>(<span class="str">'utf-8'</span>)
+        <span class="op">:</span> <span class="kw">null</span>;
+
+      <span class="cm">// ③ Parse JSON — with a graceful fallback for raw strings</span>
+      <span class="kw">let</span> <span class="var">payload</span> <span class="op">=</span> <span class="kw">null</span>;
+      <span class="kw">try</span> { <span class="var">payload</span> <span class="op">=</span> <span class="cls">JSON</span>.<span class="fn">parse</span>(<span class="var">value</span>); }
+      <span class="kw">catch</span> { <span class="var">payload</span> <span class="op">=</span> <span class="var">value</span>; }
+
+      <span class="cm">// ④ Hand off to domain logic</span>
+      <span class="kw">await</span> <span class="fn">processMessage</span>({ ...<span class="var">message</span>, <span class="var">key</span>, <span class="var">payload</span> });
+
+      <span class="cm">// ⑤ Emit CloudWatch EMF metric (no extra API call)</span>
+      <span class="var">metrics</span>.<span class="fn">increment</span>(<span class="str">'messages.processed'</span>, {
+        topic<span class="op">:</span> <span class="var">message</span>.<span class="var">topic</span>,
+        partition<span class="op">:</span> <span class="cls">String</span>(<span class="var">message</span>.<span class="var">partition</span>),
+      });
+    }
+  }
+};</pre>
+    </div>
+
+    <h3>Topic routing in processor.mjs</h3>
+    <p>The processor uses a simple registry pattern. Adding support for a new topic is a two-line change — register a handler, write the function:</p>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="code-filename">src/processor.mjs</span>
+        <span class="code-lang">Node.js ESM</span>
+      </div>
+      <pre><span class="cm">// ① Register topic handlers here</span>
+<span class="kw">const</span> <span class="var">TOPIC_HANDLERS</span> <span class="op">=</span> {
+  <span class="str">'orders.created'</span><span class="op">:</span>      <span class="fn">handleOrderCreated</span>,
+  <span class="str">'payments.processed'</span><span class="op">:</span>  <span class="fn">handlePaymentProcessed</span>,
+  <span class="str">'user.events'</span><span class="op">:</span>          <span class="fn">handleUserEvent</span>,
+};
+
+<span class="kw">export async function</span> <span class="fn">processMessage</span>(<span class="var">message</span>) {
+  <span class="kw">const</span> <span class="var">handler</span> <span class="op">=</span> <span class="var">TOPIC_HANDLERS</span>[<span class="var">message</span>.<span class="var">topic</span>];
+  <span class="kw">if</span> (<span class="op">!</span><span class="var">handler</span>) {
+    <span class="cm">// Unknown topic → log and skip (don't throw)</span>
+    <span class="var">logger</span>.<span class="fn">warn</span>(<span class="str">'No handler for topic'</span>, { topic<span class="op">:</span> <span class="var">message</span>.<span class="var">topic</span> });
+    <span class="kw">return</span>;
+  }
+  <span class="kw">await</span> <span class="fn">handler</span>(<span class="var">message</span>);
+}</pre>
+    </div>
+
+    <h3>Running tests locally</h3>
+    <p>No AWS account needed for local testing. The test runner ships four ready-made scenarios:</p>
+
+    <div class="cli">
+<span class="cli-prompt">$</span> node tests/test-local.mjs <span class="cli-flag">--scenario</span> <span class="cli-val">order</span>     <span class="cm"># single order event</span>
+<span class="cli-prompt">$</span> node tests/test-local.mjs <span class="cli-flag">--scenario</span> <span class="cli-val">payment</span>   <span class="cm"># payment + idempotency</span>
+<span class="cli-prompt">$</span> node tests/test-local.mjs <span class="cli-flag">--scenario</span> <span class="cli-val">batch</span>     <span class="cm"># multi-topic, 6 messages</span>
+<span class="cli-prompt">$</span> node tests/test-local.mjs <span class="cli-flag">--scenario</span> <span class="cli-val">unknown</span>   <span class="cm"># graceful skip</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 6: CONFIGURING ESM ── -->
+  <section id="configuring-esm">
+    <h2>Configuring the event source mapping</h2>
+    <p>
+      ESM wires your MSK cluster to your Lambda function. Two ways: AWS CLI for one-off setup, Terraform for repeatable infrastructure.
+    </p>
+
+    <h3>AWS CLI</h3>
+    <div class="cli">
+<span class="cli-prompt">$</span> aws lambda create-event-source-mapping \
+  <span class="cli-flag">--function-name</span>  <span class="cli-val">kafka-consumer-prod</span> \
+  <span class="cli-flag">--event-source-arn</span> <span class="cli-val">arn:aws:kafka:us-east-1:123:cluster/prod/abc</span> \
+  <span class="cli-flag">--topics</span>          <span class="cli-val">orders.created,payments.processed</span> \
+  <span class="cli-flag">--starting-position</span> <span class="cli-val">LATEST</span> \
+  <span class="cli-flag">--batch-size</span>      <span class="cli-val">100</span> \
+  <span class="cli-flag">--maximum-batching-window-in-seconds</span> <span class="cli-val">5</span> \
+  <span class="cli-flag">--destination-config</span> <span class="cli-val">'{"OnFailure":{"Destination":"arn:aws:sqs:...:kafka-dlq"}}'</span>
+    </div>
+
+    <h3>Key parameters explained</h3>
+    <div class="practices">
+      <div class="practice-card">
+        <span class="practice-num">PARAM</span>
+        <h4><code>--batch-size</code></h4>
+        <p>Max messages per invocation (1–10,000). Higher = more throughput. Lower = less latency per message.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">PARAM</span>
+        <h4><code>--maximum-batching-window</code></h4>
+        <p>Seconds ESM waits to accumulate a full batch. Set to 0 for minimum latency. Set to 5–30 for higher throughput.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">PARAM</span>
+        <h4><code>--starting-position</code></h4>
+        <p><code>LATEST</code> = only new messages. <code>TRIM_HORIZON</code> = from the beginning of the retention window.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">PARAM</span>
+        <h4><code>--destination-config</code></h4>
+        <p>Where to send failed batch metadata after all retries are exhausted. Always wire this to an SQS DLQ.</p>
+      </div>
+    </div>
+
+    <h3>Consumer lag — what to watch</h3>
+    <div class="lag-meter">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);">OffsetLag — orders.created-0</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--amber);">14,302 messages</span>
+      </div>
+      <div class="lag-bar-wrap"><div class="lag-bar" style="width:78%;"></div></div>
+      <div class="lag-labels"><span>0</span><span>5k</span><span>10k</span><span>15k</span><span>20k</span></div>
+    </div>
+    <p>
+      AWS publishes <code>OffsetLag</code> to CloudWatch under the <code>AWS/Lambda</code> namespace, tagged by function name and ESM UUID. Alert when it exceeds your acceptable processing window — the Terraform in the zip creates this alarm automatically.
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 7: BEST PRACTICES ── -->
+  <section id="best-practices">
+    <h2>Production best practices</h2>
+    <p>These aren't optional — each one has a failure mode behind it that has burned production systems.</p>
+
+    <div class="practices">
+      <div class="practice-card">
+        <span class="practice-num">01 · CRITICAL</span>
+        <h4>Make handlers idempotent</h4>
+        <p>ESM retries entire batches on failure. If your handler credits a payment twice, that's a production incident. Use a DynamoDB condition write or a Redis SET NX as a deduplication gate.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">02 · CRITICAL</span>
+        <h4>Always configure a DLQ</h4>
+        <p>Without a destination config, exhausted retry batches are silently dropped. The DLQ captures the batch metadata (topic, partition, offsets) so you can replay or investigate.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">03 · PERFORMANCE</span>
+        <h4>Tune batch size to your p99</h4>
+        <p>Start at 100. Load test with realistic payloads. If your timeout is 5 minutes and a 1,000-message batch takes 4.5 minutes, one slow message can cause the whole batch to time out.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">04 · PERFORMANCE</span>
+        <h4>Memory-size before concurrency</h4>
+        <p>Lambda CPU is proportional to memory. Doubling memory from 512MB to 1024MB often halves duration — which halves cost at the same throughput. Profile before scaling concurrency.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">05 · OBSERVABILITY</span>
+        <h4>Use CloudWatch EMF for metrics</h4>
+        <p>The <code>metrics.mjs</code> in the zip emits EMF-formatted JSON. CloudWatch parses it automatically — zero extra API calls, sub-second metric resolution, and no additional latency.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">06 · SECURITY</span>
+        <h4>Least-privilege IAM</h4>
+        <p>The Lambda role needs only <code>kafka-cluster:ReadData</code>, <code>DescribeTopic</code>, <code>DescribeGroup</code>, and <code>AlterGroup</code> on the specific cluster ARN. The Terraform scopes this correctly.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── SECTION 8: USE CASES ── -->
+  <section id="use-cases">
+    <h2>Real-world use cases</h2>
+    <p>ESM shines anywhere you need stateless, scalable, event-driven processing without the cost of always-on compute:</p>
+
+    <div class="usecases">
+      <div class="usecase">
+        <div class="usecase-dot" style="background:var(--teal);"></div>
+        <div>
+          <h4>Real-time analytics pipelines</h4>
+          <p>Aggregate clickstream events into time-windowed stats. Fan out to DynamoDB, S3, and Kinesis Data Firehose from a single Lambda.</p>
+        </div>
+      </div>
+      <div class="usecase">
+        <div class="usecase-dot" style="background:var(--orange);"></div>
+        <div>
+          <h4>Payment &amp; fraud detection</h4>
+          <p>Process payment events with sub-second latency. Apply ML model inference inline. Use Provisioned mode to eliminate cold-start variance.</p>
+        </div>
+      </div>
+      <div class="usecase">
+        <div class="usecase-dot" style="background:var(--blue);"></div>
+        <div>
+          <h4>Log ingestion &amp; enrichment</h4>
+          <p>Parse, enrich with geo/IP data, and route structured logs to OpenSearch or S3. Lambda scales linearly with log volume.</p>
+        </div>
+      </div>
+      <div class="usecase">
+        <div class="usecase-dot" style="background:var(--purple);"></div>
+        <div>
+          <h4>Event-driven microservices</h4>
+          <p>Replace polling-based integrations. Each downstream service subscribes to relevant topics — fully decoupled, no shared databases.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── ZIP CONTENTS ── -->
+  <section>
+    <h2>What's in the zip</h2>
+    <div class="practices">
+      <div class="practice-card">
+        <span class="practice-num">FILE</span>
+        <h4>src/handler.mjs</h4>
+        <p>Lambda entrypoint. Decodes, routes, and tracks results. Drop-in ready.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">FILE</span>
+        <h4>src/processor.mjs</h4>
+        <p>Topic handler registry. Add your business logic here. Includes idempotency stub.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">FILE</span>
+        <h4>src/logger.mjs</h4>
+        <p>Structured JSON logger. CloudWatch Logs Insights, Datadog, and OpenSearch compatible.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">FILE</span>
+        <h4>src/metrics.mjs</h4>
+        <p>CloudWatch EMF metrics. Zero-latency custom metrics with no extra API calls.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">FILE</span>
+        <h4>tests/test-local.mjs</h4>
+        <p>Four test scenarios: order, payment, batch, unknown. No AWS needed.</p>
+      </div>
+      <div class="practice-card">
+        <span class="practice-num">FILE</span>
+        <h4>terraform/main.tf</h4>
+        <p>Full IaC: Lambda, ESM, IAM, SQS DLQ, and a CloudWatch lag alarm.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <div class="cta">
+    <h2>Ready to go serverless with Kafka?</h2>
+    <p>Clone the repo, run the local tests, and deploy to dev in under 15 minutes. No infrastructure required.</p>
+    <div class="btn-group">
+      <a class="btn btn-primary" href="#">⬇ Download kafka-lambda-esm.zip</a>
+      <a class="btn btn-secondary" href="https://docs.aws.amazon.com/lambda/latest/dg/with-kafka.html" target="_blank">AWS ESM docs ↗</a>
+    </div>
+  </div>
+
+</article>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "kafka-lambda-consumer",
+  "version": "1.0.0",
+  "description": "Production-ready AWS Lambda Kafka ESM consumer",
+  "type": "module",
+  "main": "src/handler.mjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "test": "node tests/test-local.mjs",
+    "test:order": "node tests/test-local.mjs --scenario order",
+    "test:payment": "node tests/test-local.mjs --scenario payment",
+    "test:batch": "node tests/test-local.mjs --scenario batch",
+    "test:unknown": "node tests/test-local.mjs --scenario unknown",
+    "test:all": "for s in order payment batch unknown; do echo \"\\n--- $s ---\"; npm run test:$s; done",
+    "deploy:dev": "./scripts/deploy.sh dev",
+    "deploy:prod": "./scripts/deploy.sh prod",
+    "lint": "node --check src/*.mjs tests/*.mjs"
+  },
+  "keywords": ["kafka", "aws-lambda", "esm", "event-source-mapping", "msk", "serverless"],
+  "license": "MIT"
+}

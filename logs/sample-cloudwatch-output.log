@@ -1,0 +1,87 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SAMPLE CloudWatch Logs — kafka-consumer-prod
+// Log Group: /aws/lambda/kafka-consumer-prod
+// Log Stream: 2024/01/15/[$LATEST]a3f9c1d2e4b567890abcdef1234567890
+// Time range: 2024-01-15T10:32:00Z → 2024-01-15T10:32:03Z
+// ─────────────────────────────────────────────────────────────────────────────
+
+START RequestId: a3f9c1d2-e4b5-6789-0abc-def123456789 Version: $LATEST
+
+{"timestamp":"2024-01-15T10:32:00.123Z","level":"INFO","message":"ESM invocation started","service":"kafka-lambda-consumer","environment":"prod","requestId":"a3f9c1d2-e4b5-6789-0abc-def123456789","functionName":"kafka-consumer-prod","remainingMs":299847,"topicPartitions":["orders.created-0","orders.created-1","payments.processed-0"],"eventSourceArn":"arn:aws:kafka:us-east-1:123456789012:cluster/prod-cluster/abc123"}
+
+{"timestamp":"2024-01-15T10:32:00.145Z","level":"INFO","message":"Processing partition","service":"kafka-lambda-consumer","environment":"prod","topicPartition":"orders.created-0","messageCount":25}
+
+{"timestamp":"2024-01-15T10:32:00.201Z","level":"DEBUG","message":"Decoded message","service":"kafka-lambda-consumer","environment":"prod","topic":"orders.created","partition":0,"offset":1042,"key":"ORD-20240115-001"}
+
+{"timestamp":"2024-01-15T10:32:00.248Z","level":"INFO","message":"Processing order","service":"kafka-lambda-consumer","environment":"prod","orderId":"ORD-20240115-001","customerId":"CUST-789","amount":249.99,"offset":1042}
+
+{"timestamp":"2024-01-15T10:32:00.299Z","level":"INFO","message":"Order processed successfully","service":"kafka-lambda-consumer","environment":"prod","orderId":"ORD-20240115-001"}
+
+// ── EMF Metric (CloudWatch parses this automatically) ─────────────────────
+{"_aws":{"Timestamp":1705314720299,"CloudWatchMetrics":[{"Namespace":"KafkaLambdaConsumer","Dimensions":[["topic","partition"]],"Metrics":[{"Name":"messages.processed","Unit":"Count"}]}]},"messages.processed":1,"topic":"orders.created","partition":"0"}
+
+{"timestamp":"2024-01-15T10:32:00.312Z","level":"DEBUG","message":"Decoded message","service":"kafka-lambda-consumer","environment":"prod","topic":"orders.created","partition":0,"offset":1043,"key":"ORD-20240115-002"}
+
+{"timestamp":"2024-01-15T10:32:00.358Z","level":"INFO","message":"Processing order","service":"kafka-lambda-consumer","environment":"prod","orderId":"ORD-20240115-002","customerId":"CUST-102","amount":79.50,"offset":1043}
+
+{"timestamp":"2024-01-15T10:32:00.401Z","level":"INFO","message":"Order processed successfully","service":"kafka-lambda-consumer","environment":"prod","orderId":"ORD-20240115-002"}
+
+// ... (messages 3–25 on orders.created-0, offsets 1044–1066) ...
+
+{"timestamp":"2024-01-15T10:32:01.887Z","level":"INFO","message":"Processing partition","service":"kafka-lambda-consumer","environment":"prod","topicPartition":"payments.processed-0","messageCount":8}
+
+{"timestamp":"2024-01-15T10:32:01.901Z","level":"INFO","message":"Processing payment","service":"kafka-lambda-consumer","environment":"prod","paymentId":"PAY-20240115-XYZ","status":"SUCCESS","offset":512}
+
+{"timestamp":"2024-01-15T10:32:01.950Z","level":"INFO","message":"Payment processed","service":"kafka-lambda-consumer","environment":"prod","paymentId":"PAY-20240115-XYZ"}
+
+{"timestamp":"2024-01-15T10:32:02.230Z","level":"WARN","message":"Duplicate payment event skipped","service":"kafka-lambda-consumer","environment":"prod","paymentId":"PAY-20240115-DUP"}
+
+// ── Final Summary ─────────────────────────────────────────────────────────
+{"timestamp":"2024-01-15T10:32:02.998Z","level":"INFO","message":"ESM invocation complete","service":"kafka-lambda-consumer","environment":"prod","processed":57,"failed":0,"skipped":1,"errors":[],"durationMs":2875,"requestId":"a3f9c1d2-e4b5-6789-0abc-def123456789"}
+
+// ── Final Duration EMF Metric ─────────────────────────────────────────────
+{"_aws":{"Timestamp":1705314722998,"CloudWatchMetrics":[{"Namespace":"KafkaLambdaConsumer","Dimensions":[[]],"Metrics":[{"Name":"invocation.duration_ms","Unit":"Milliseconds"}]}]},"invocation.duration_ms":2875}
+
+END RequestId: a3f9c1d2-e4b5-6789-0abc-def123456789
+REPORT RequestId: a3f9c1d2-e4b5-6789-0abc-def123456789 Duration: 2876.45 ms  Billed Duration: 2877 ms  Memory Size: 512 MB  Max Memory Used: 87 MB  Init Duration: 412.33 ms
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ERROR SCENARIO SAMPLE
+// ─────────────────────────────────────────────────────────────────────────────
+
+START RequestId: b7e2f4a9-1c3d-5678-efab-012345678901 Version: $LATEST
+
+{"timestamp":"2024-01-15T10:45:00.100Z","level":"INFO","message":"ESM invocation started","service":"kafka-lambda-consumer","environment":"prod","requestId":"b7e2f4a9-1c3d-5678-efab-012345678901","topicPartitions":["orders.created-0"]}
+
+{"timestamp":"2024-01-15T10:45:00.155Z","level":"INFO","message":"Processing order","service":"kafka-lambda-consumer","environment":"prod","orderId":null,"customerId":"CUST-BROKEN","amount":0,"offset":1099}
+
+{"timestamp":"2024-01-15T10:45:00.156Z","level":"ERROR","message":"Failed to process message","service":"kafka-lambda-consumer","environment":"prod","topic":"orders.created","partition":0,"offset":1099,"error":"Missing orderId in order event at offset 1099","stack":"Error: Missing orderId in order event at offset 1099\n    at handleOrderCreated (file:///var/task/src/processor.mjs:56:11)\n    at processMessage (file:///var/task/src/processor.mjs:28:3)\n    at handler (file:///var/task/src/handler.mjs:74:9)"}
+
+{"_aws":{"Timestamp":1705315500156,"CloudWatchMetrics":[{"Namespace":"KafkaLambdaConsumer","Dimensions":[["topic","errorType"]],"Metrics":[{"Name":"messages.failed","Unit":"Count"}]}]},"messages.failed":1,"topic":"orders.created","errorType":"Error"}
+
+END RequestId: b7e2f4a9-1c3d-5678-efab-012345678901
+REPORT RequestId: b7e2f4a9-1c3d-5678-efab-012345678901 Duration: 58.12 ms  Billed Duration: 59 ms  Memory Size: 512 MB  Max Memory Used: 84 MB
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CloudWatch Logs Insights Query Examples
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// 1. All errors in the last hour:
+//    fields @timestamp, message, topic, partition, offset, error
+//    | filter level = "ERROR"
+//    | sort @timestamp desc
+//    | limit 50
+//
+// 2. Throughput by topic:
+//    filter ispresent(topic) and message = "Order processed successfully"
+//    | stats count() as count by topic, bin(5m)
+//
+// 3. Average processing duration:
+//    filter message = "ESM invocation complete"
+//    | stats avg(durationMs) as avgMs, max(durationMs) as maxMs by bin(1h)
+//
+// 4. Duplicate / skipped payments:
+//    filter message = "Duplicate payment event skipped"
+//    | stats count() as duplicates by bin(1h)
+//
+// ─────────────────────────────────────────────────────────────────────────────
